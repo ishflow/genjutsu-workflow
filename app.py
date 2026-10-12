@@ -10,11 +10,23 @@ app=FastAPI();jobs={}
 @app.get('/')
 def index():return FileResponse(ROOT/'static/index.html')
 @app.post('/jobs')
-def create(video:UploadFile=File(...),prompt:str=Form('person'),provider:str=Form('replicate'),mode:str=Form('depth')):
+def create(video:UploadFile=File(...),prompt:str=Form('person'),provider:str=Form('replicate'),mode:str=Form('depth'),range_from:str=Form(''),range_to:str=Form('')):
     if mode not in ['depth','face_mesh','depth_mesh']:raise HTTPException(400,'Unknown workflow mode')
     if provider not in ['huggingface','replicate','replicate-chenxwh']:raise HTTPException(400,'Unknown provider')
+    part=None
+    if range_from or range_to:
+        from trim import parse_range
+        try:part=parse_range(range_from,range_to)
+        except ValueError as e:raise HTTPException(400,str(e))
     ident=uuid.uuid4().hex;folder=RUNS/ident;folder.mkdir();src=folder/'upload.mp4'
-    with src.open('wb') as out:shutil.copyfileobj(video.file,out)
+    received=folder/'source-full.mp4' if part else src
+    with received.open('wb') as out:shutil.copyfileobj(video.file,out)
+    if part:
+        from trim import trim
+        try:trim(received,src,*part)
+        except (ValueError,RuntimeError) as e:raise HTTPException(400,str(e))
+        finally:received.unlink(missing_ok=True)
+        (folder/'trim.json').write_text(json.dumps({'from':part[0],'to':part[1]}))
     jobs[ident]={'state':'running','status':'Starting','id':ident}
     def work():
         try:

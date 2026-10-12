@@ -2,6 +2,17 @@
 from pathlib import Path
 import json,subprocess,sys,shutil
 ROOT=Path(__file__).resolve().parent
+WORKER_FPS=24
+
+def track(folder,*flags):
+    """Runs the mesh worker and turns its failure into a message a person can act on."""
+    folder=Path(folder);report=folder/'face-tracking.json';report.unlink(missing_ok=True)
+    r=subprocess.run([str(ROOT/'.venv-face/bin/python'),str(ROOT/'mesh_worker.py'),str(folder),*flags],capture_output=True,text=True)
+    if r.returncode==0:return
+    if report.exists():
+        data=json.loads(report.read_text());missing=data.get('missing_frames') or []
+        if missing:raise ValueError(f"No face found in {len(missing)} of {data['frames']} frames (first gap at {missing[0]/WORKER_FPS:.1f} s). Face mesh needs one centered face in every frame: pick a part of the video where the face stays visible.")
+    raise RuntimeError('Face mesh worker failed: '+(r.stderr.strip().splitlines() or ['no error output'])[-1])
 
 def run(src,folder,status=print):
     from pipeline import normalize
@@ -12,7 +23,7 @@ def run(src,folder,status=print):
     folder.mkdir(parents=True,exist_ok=True)
     status('Normalizing video');normalize(src,folder/'original.mp4')
     status('Tracking face mesh locally · no depth or SAM')
-    subprocess.run([str(python),str(ROOT/'mesh_worker.py'),str(folder)],check=True)
+    track(folder)
     (folder/'workflow-mode.json').write_text(json.dumps({'mode':'face_mesh'}))
     separate(src,folder,status)
     prepare_seedance_video(folder)
@@ -29,7 +40,7 @@ def run_depth(src,folder,prompt='person',provider='replicate',status=print):
     run_advanced(src,folder,prompt,provider,status)
     shutil.copy2(folder/'composite-silent.mp4',folder/'depth-composite-silent.mp4')
     status('Adding face mesh from original video onto depth composite')
-    subprocess.run([str(python),str(ROOT/'mesh_worker.py'),str(folder),'--depth'],check=True)
+    track(folder,'--depth')
     (folder/'workflow-mode.json').write_text(json.dumps({'mode':'depth_mesh'}))
     prepare_seedance_video(folder)
     status('Depth + face mesh ready · full mask and facial tracking review required')

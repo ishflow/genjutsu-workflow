@@ -10,6 +10,7 @@ def main():
         try:importlib.import_module(name);print(name+': OK')
         except Exception as exc:print(name+': FAILED ('+type(exc).__name__+')');failed=True
     binary=shutil.which('rubberband');print('rubberband:', 'OK' if binary else 'MISSING — see docs/SETUP-AGENT.md');failed=failed or not binary
+    print('ffmpeg:', 'OK' if shutil.which('ffmpeg') else 'missing — trimming a part of a long video is unavailable')
     if args.mesh:
         from pathlib import Path
         import subprocess
