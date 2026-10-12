@@ -127,6 +127,8 @@ def composite(original,depth,seg,directory,audio_source=None):
 
 def run(src,directory,prompt='person',provider='replicate',status=print):
     directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
+    load_env()
+    if not os.getenv('REPLICATE_API_TOKEN'):raise ValueError('Depth modes need REPLICATE_API_TOKEN for the SAM masks. Choose Fast · Face mesh, which needs neither depth nor SAM.')
     from audio_workflow import separate
     separate(src,directory,status)
     status('Preparing video · 24 fps');meta=normalize(src,directory/'original.mp4')

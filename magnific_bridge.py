@@ -1,12 +1,14 @@
 """Seedance 2.5 Pro and vocal isolation through the Magnific API. Same contract as seedance_bridge."""
 from pathlib import Path
-import json,mimetypes,secrets,time
+import json,secrets,time
 import requests
 from config import setting
 from audio_workflow import finish_preview
 
 API='https://api.magnific.com'
 VIDEO_SUFFIXES=['.mp4','.mov','.webm']
+# The upload API accepts exactly these types; Python's own guess for .wav (audio/x-wav) is refused.
+CONTENT_TYPES={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.mp4':'video/mp4','.mov':'video/quicktime','.webm':'video/webm','.wav':'audio/wav','.mp3':'audio/mpeg'}
 RATIOS={'film_horizontal_21_9':21/9,'widescreen_16_9':16/9,'classic_4_3':4/3,'square_1_1':1,'traditional_3_4':3/4,'social_story_9_16':9/16,'film_vertical_9_21':9/21}
 MIN_SECONDS,MAX_SECONDS=4,30
 DRAFT_RESOLUTIONS=['480p','720p']
@@ -29,8 +31,8 @@ def headers():return {'x-magnific-api-key':api_key()}
 
 def upload(path):
     """Private staging upload; returns the provider's file id and its signed, expiring URL."""
-    path=Path(path);content_type=mimetypes.guess_type(path.name)[0]
-    if not content_type:raise ValueError(f'Unknown media type for {path.name}.')
+    path=Path(path);content_type=CONTENT_TYPES.get(path.suffix.lower())
+    if not content_type:raise ValueError(f'Magnific cannot take {path.name}: use '+', '.join(sorted(CONTENT_TYPES))+'.')
     r=requests.post(API+'/v1/ai/uploads/request-url',headers=headers(),json={'files':[{'content_type':content_type}]},timeout=60)
     r.raise_for_status();slot=r.json()['files'][0]
     with path.open('rb') as f:put=requests.put(slot['upload_url'],headers=slot['headers'],data=f,timeout=600)

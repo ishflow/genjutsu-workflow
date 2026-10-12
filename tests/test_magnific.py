@@ -23,6 +23,16 @@ class MagnificTests(unittest.TestCase):
  def test_missing_key_is_an_error(self):
   with patch('magnific_bridge.setting',side_effect=defaults):
    with self.assertRaises(ValueError):magnific_bridge.api_key()
+ def test_upload_asks_for_a_content_type_the_provider_accepts(self):
+  with tempfile.TemporaryDirectory() as d:
+   slot={'files':[{'file_id':'upl_aud_1','upload_url':'https://storage.example.org/put','headers':{},'asset_url':'https://cdn.example.org/a'}]}
+   for name,expected in [('original-audio.wav','audio/wav'),('clip.mov','video/quicktime'),('face.jpg','image/jpeg')]:
+    path=Path(d)/name;path.write_bytes(b'x');post=Mock(return_value=reply(slot))
+    with patch('magnific_bridge.api_key',return_value='test'),patch('magnific_bridge.requests.post',post),patch('magnific_bridge.requests.put',return_value=reply({})):
+     magnific_bridge.upload(path)
+    self.assertEqual(post.call_args.kwargs['json'],{'files':[{'content_type':expected}]})
+   with patch('magnific_bridge.api_key',return_value='test'):
+    with self.assertRaises(ValueError):magnific_bridge.upload(Path(d)/'notes.txt')
  def test_draft_is_reference_to_video_at_720p(self):
   with tempfile.TemporaryDirectory() as d:
    p=self.prepared_job(d);post=Mock(return_value=reply({'data':{'task_id':'task-1'}}))
