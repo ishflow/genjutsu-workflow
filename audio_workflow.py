@@ -25,6 +25,12 @@ def separate(src,folder,status=print):
     folder=Path(folder)
     if (folder/'audio-manifest.json').exists():return
     status('Audio · extracting original track');original=read_audio(src);write_audio(folder/'original-audio.wav',original)
+    from generation import provider
+    if provider()=='magnific':
+        from magnific_bridge import isolate_vocals
+        task=isolate_vocals(folder/'original-audio.wav',folder/'vocals.wav',status)
+        (folder/'audio-manifest.json').write_text(json.dumps({'prediction_id':task,'seedance_video':'composite-silent.mp4','seedance_audio':'vocals.wav','final_audio':'upload.mp4 (entire original audio track)','discard_seedance_audio':True,'separation':'Magnific SAM Audio, speech only; residual music bleed is possible'},indent=2))
+        return
     token=os.getenv('REPLICATE_API_TOKEN')
     if not token:raise ValueError('REPLICATE_API_TOKEN is required for audio separation.')
     headers={'Authorization':'Bearer '+token}

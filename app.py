@@ -55,12 +55,12 @@ def seedance(ident:str,prompt:str=Form(...),sirio:UploadFile=File(...),tein:Uplo
         path=folder/(name+suffix)
         with path.open('wb') as f:shutil.copyfileobj(upload.file,f)
         paths.append(path)
-    from seedance_bridge import submit
+    from generation import submit
     try:request_id=submit(folder,prompt,*paths)
     except Exception as e:raise HTTPException(502,str(e))
     jobs[ident]={'id':ident,'state':'running','status':'Seedance rendering: '+request_id}
     def collect():
-        from seedance_bridge import wait_and_finish
+        from generation import wait_and_finish
         try:
             wait_and_finish(folder,request_id,lambda s:jobs[ident].update(status=s))
             jobs[ident].update(state='done',status='Final preview ready · entire original source audio',final_url='/runs/'+ident+'/final-preview.mp4')
@@ -112,10 +112,10 @@ def create_hd(ident:str):
         def save(): (hd/'status.json').write_text(json.dumps(hd_jobs[ident]))
         save()
     def work_hd():
-        from seedance_bridge import submit_hd,wait_and_finish
+        from generation import submit_hd,wait_and_finish
         try:
             request_id=submit_hd(folder)
-            hd_jobs[ident].update(request_id=request_id,status='Generating 1080p through Enhancor');save()
+            hd_jobs[ident].update(request_id=request_id,status='Generating 1080p');save()
             wait_and_finish(hd,request_id,lambda s:hd_jobs[ident].update(status=s))
             hd_jobs[ident].update(state='done',status='1080p ready · original source audio restored')
         except Exception as e:hd_jobs[ident].update(state='error',status=str(e))
@@ -139,7 +139,7 @@ app.mount('/static',StaticFiles(directory=ROOT/'static'),name='static')
 @app.on_event('startup')
 def resume_saved_generations():
     """Resume collection only: never requeue a paid prediction on restart."""
-    from seedance_bridge import wait_and_finish
+    from generation import wait_and_finish
     for root in RUNS.iterdir():
         if not root.is_dir() or len(root.name)!=32:continue
         for folder,response_file,registry in [(root,'seedance-response.json',jobs),(root/'hd','response.json',hd_jobs)]:

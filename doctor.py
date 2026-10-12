@@ -18,14 +18,20 @@ def main():
         print('Face mesh worker: '+('OK' if ready else 'MISSING — run bash setup-face-mesh.sh'))
         failed=failed or not ready
     missing=[]
-    for key in ['ENHANCOR_API_KEY','REPLICATE_API_TOKEN']:
+    magnific=setting('SEEDANCE_PROVIDER','enhancor')=='magnific'
+    if magnific:
+        from magnific_bridge import api_key
+        try:api_key();print('Magnific key: configured (not verified remotely)')
+        except ValueError:print('Magnific key: MISSING');missing.append('MAGNIFIC_API_KEY')
+        print('REPLICATE_API_TOKEN: '+('configured (not verified remotely)' if setting('REPLICATE_API_TOKEN').strip() else 'not set — depth modes unavailable; face mesh mode needs only Magnific'))
+    for key in [] if magnific else ['ENHANCOR_API_KEY','REPLICATE_API_TOKEN']:
         value=setting(key).strip()
         valid=bool(value) and not any(x in value.lower() for x in ['your_key','your_api','replace_me','placeholder'])
         print(key+': '+('configured (not verified remotely)' if valid else 'MISSING'))
         if not valid:missing.append(key)
     if setting('MEDIA_HOST','tmpfiles') not in ['tmpfiles','catbox']:
         print('MEDIA_HOST must be tmpfiles or catbox');failed=True
-    if not setting('ENHANCOR_WEBHOOK_URL'):
+    if not magnific and not setting('ENHANCOR_WEBHOOK_URL'):
         print('WEBHOOK: not running/configured — install cloudflared and launch the app, or set your own HTTPS callback')
         missing.append('ENHANCOR_WEBHOOK_URL')
     if failed:print('DEPENDENCIES NOT READY');return 1

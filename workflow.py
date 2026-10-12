@@ -53,7 +53,7 @@ elif a.command=='repair-rgb':
  meta['mask_method']='SAM 3 on original RGB, preserving depth colors';(folder/'manifest.json').write_text(json.dumps(meta,indent=2))
  print('Repaired. Review the entire clip again; approval cleared.')
 else:
- from seedance_bridge import submit,submit_hd,wait_and_finish
+ from generation import submit,submit_hd,wait_and_finish
  if a.command=='submit':
   request=submit(folder,Path(a.prompt_file).read_text(),a.reference,a.second_reference)
  elif a.command=='hd':
