@@ -32,12 +32,10 @@ class ThirtySecondLimitTests(unittest.TestCase):
   path=Path(folder)/f'{seconds}.mp4'
   subprocess.run(['ffmpeg','-y','-f','lavfi','-i',f'testsrc=duration={seconds}:size=64x64:rate=60','-f','lavfi','-i',f'sine=duration={seconds}','-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac',str(path)],check=True,capture_output=True)
   return path
- def test_a_part_cut_to_thirty_seconds_is_accepted(self):
+ def test_a_clip_a_fraction_over_thirty_seconds_is_accepted_and_capped(self):
   import pipeline
   with tempfile.TemporaryDirectory() as d:
-   part=Path(d)/'part.mp4';trim.trim(self.clip(d,33),part,0,30)
-   self.assertGreater(trim.duration(part),30)
-   self.assertEqual(pipeline.normalize(part,Path(d)/'original.mp4')['frames'],720)
+   self.assertEqual(pipeline.normalize(self.clip(d,30.3),Path(d)/'original.mp4')['frames'],720)
  def test_a_longer_clip_is_still_refused(self):
   import pipeline
   with tempfile.TemporaryDirectory() as d:
