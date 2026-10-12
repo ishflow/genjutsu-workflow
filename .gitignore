@@ -15,3 +15,4 @@ runs/
 
 .venv-face/
 models/
+.venv-local/

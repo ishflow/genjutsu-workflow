@@ -19,13 +19,19 @@ def main():
         print('Face mesh worker: '+('OK' if ready else 'MISSING — run bash setup-face-mesh.sh'))
         failed=failed or not ready
     missing=[]
+    import local_models
+    local=local_models.enabled()
+    if local:
+        absent=local_models.missing()
+        print('Local preparation: '+('OK (depth, masks and vocals run on this machine)' if not absent else 'MISSING '+', '.join(absent)+' — run bash setup-local-models.sh'))
+        failed=failed or bool(absent)
     magnific=setting('SEEDANCE_PROVIDER','enhancor')=='magnific'
     if magnific:
         from magnific_bridge import api_key
         try:api_key();print('Magnific key: configured (not verified remotely)')
         except ValueError:print('Magnific key: MISSING');missing.append('MAGNIFIC_API_KEY')
-        print('REPLICATE_API_TOKEN: '+('configured (not verified remotely)' if setting('REPLICATE_API_TOKEN').strip() else 'not set — depth modes unavailable; face mesh mode needs only Magnific'))
-    for key in [] if magnific else ['ENHANCOR_API_KEY','REPLICATE_API_TOKEN']:
+        if not local:print('REPLICATE_API_TOKEN: '+('configured (not verified remotely)' if setting('REPLICATE_API_TOKEN').strip() else 'not set — depth modes unavailable; face mesh mode needs only Magnific'))
+    for key in [] if magnific else ['ENHANCOR_API_KEY']+([] if local else ['REPLICATE_API_TOKEN']):
         value=setting(key).strip()
         valid=bool(value) and not any(x in value.lower() for x in ['your_key','your_api','replace_me','placeholder'])
         print(key+': '+('configured (not verified remotely)' if valid else 'MISSING'))

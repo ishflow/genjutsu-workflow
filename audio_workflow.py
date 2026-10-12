@@ -25,6 +25,12 @@ def separate(src,folder,status=print):
     folder=Path(folder)
     if (folder/'audio-manifest.json').exists():return
     status('Audio · extracting original track');original=read_audio(src);write_audio(folder/'original-audio.wav',original)
+    import local_models
+    if local_models.enabled():
+        status('Audio · separating vocals on this Mac')
+        local_models.vocals(folder/'original-audio.wav',folder/'vocals.wav',folder/'music.wav')
+        (folder/'audio-manifest.json').write_text(json.dumps({'prediction_id':'local','seedance_video':'composite-silent.mp4','seedance_audio':'vocals.wav','final_audio':'upload.mp4 (entire original audio track)','discard_seedance_audio':True,'separation':'Demucs htdemucs, local; residual music or vocal bleed is possible'},indent=2))
+        return
     from generation import provider
     if provider()=='magnific':
         from magnific_bridge import isolate_vocals

@@ -11,12 +11,20 @@ for command in ['status','repair-rgb','resume','hd','review','submit']:
  if command=='submit':c.add_argument('--prompt-file',required=True);c.add_argument('--reference',required=True);c.add_argument('--second-reference')
  if command=='resume':c.add_argument('--hd',action='store_true')
 sub.choices['prepare'].add_argument('--mode',choices=['depth','face_mesh','depth_mesh'],default='depth')
+sub.choices['prepare'].add_argument('--from',dest='part_from',help='start of the part to use, in seconds');sub.choices['prepare'].add_argument('--to',dest='part_to',help='end of the part to use, in seconds')
 a=p.parse_args()
 if a.command=='prepare':
  import uuid,shutil
  from pipeline import run
+ part=None
+ if a.part_from or a.part_to:
+  from trim import parse_range,trim
+  try:part=parse_range(a.part_from,a.part_to)
+  except ValueError as error:p.error(str(error))
  folder=ROOT/'runs'/uuid.uuid4().hex;folder.mkdir(parents=True)
- shutil.copy2(a.video,folder/'upload.mp4');print('JOB:',folder.name,flush=True)
+ if part:trim(a.video,folder/'upload.mp4',*part);(folder/'trim.json').write_text(json.dumps({'from':part[0],'to':part[1]}))
+ else:shutil.copy2(a.video,folder/'upload.mp4')
+ print('JOB:',folder.name,flush=True)
  if a.mode=='face_mesh':
   from face_mesh import run as run_mesh
   run_mesh(folder/'upload.mp4',folder)

@@ -128,21 +128,25 @@ def composite(original,depth,seg,directory,audio_source=None):
 def run(src,directory,prompt='person',provider='replicate',status=print):
     directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
     load_env()
-    if not os.getenv('REPLICATE_API_TOKEN'):raise ValueError('Depth modes need REPLICATE_API_TOKEN for the SAM masks. Choose Fast · Face mesh, which needs neither depth nor SAM.')
+    import local_models
+    local=local_models.enabled()
+    if not local and not os.getenv('REPLICATE_API_TOKEN'):raise ValueError('Depth modes need REPLICATE_API_TOKEN for the SAM masks, or LOCAL_PREPARATION=1. Choose Fast · Face mesh, which needs neither depth nor SAM.')
     from audio_workflow import separate
     separate(src,directory,status)
     status('Preparing video · 24 fps');meta=normalize(src,directory/'original.mp4')
     status('Video Depth Anything · generating depth')
-    if provider=='huggingface':depth_hf(directory/'original.mp4',directory/'depth-raw.mp4')
+    if local:local_models.depth(directory/'original.mp4',directory/'depth-raw.mp4')
+    elif provider=='huggingface':depth_hf(directory/'original.mp4',directory/'depth-raw.mp4')
     else:depth_replicate(directory/'original.mp4',directory/'depth-raw.mp4', 'chenxwh/depth-any-video' if provider=='replicate-chenxwh' else 'lucataco/depth-anything-video')
     shutil.copyfile(directory/'depth-raw.mp4',directory/'depth.mp4')
-    status('SAM 3 · segmenting the depth subject')
+    status('SAM 2 · following the subject on this Mac · about one second per frame' if local else 'SAM 3 · segmenting the depth subject')
     from raw_masks import segment_raw,clean_border_fragments
-    raw_dir=clean_border_fragments(segment_raw(directory/'depth.mp4',directory,prompt))
+    # The local detector reads the original picture; the hosted SAM 3 reads the depth video.
+    raw_dir=clean_border_fragments(segment_raw(directory/('original.mp4' if local else 'depth.mp4'),directory,prompt))
     status('Compositing · depth subject over original background')
     composite(directory/'original.mp4',directory/'depth.mp4',raw_dir,directory,src)
     from audio_workflow import prepare_seedance_video
     status('Embedding isolated vocals · +3 semitones')
     prepare_seedance_video(directory)
-    meta.update(prompt=prompt,depth_provider=provider,sam_space=SAM,mask_method='SAM 3 raw PNG masks')
+    meta.update(prompt=prompt,depth_provider='local' if local else provider,sam_space='local SAM 2.1' if local else SAM,mask_method='SAM 2 on the original picture, local' if local else 'SAM 3 raw PNG masks')
     (directory/'manifest.json').write_text(json.dumps(meta,indent=2));status('Complete')

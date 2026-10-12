@@ -3,6 +3,8 @@ import os,json,time,zipfile,io
 import requests
 
 def segment_raw(video,folder,prompt='person'):
+    import local_models
+    if local_models.enabled():return local_models.masks(video,folder,prompt)
     folder=Path(folder);h={'Authorization':'Bearer '+os.environ['REPLICATE_API_TOKEN']}
     with open(video,'rb') as f:r=requests.post('https://api.replicate.com/v1/files',headers=h,files={'content':f},timeout=120)
     r.raise_for_status();url=r.json()['urls']['get']
