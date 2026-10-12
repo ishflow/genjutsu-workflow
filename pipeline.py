@@ -8,6 +8,7 @@ from gradio_client import Client, handle_file
 from config import load_env
 load_env()
 
+MAX_SECONDS=30
 DEPTH='depth-anything/Video-Depth-Anything'
 SAM='linoyts/SAM3-Video'
 
@@ -31,7 +32,9 @@ def normalize(src,dst):
     with av.open(str(src)) as inp:
         vs=inp.streams.video[0];rate=float(vs.average_rate or 24)
         dur=float(vs.duration*vs.time_base) if vs.duration else float(inp.duration/av.time_base)
-        if dur>30:raise ValueError('Use a clip of 30 seconds or less for this hosted workflow.')
+        # A clip cut to exactly 30 s carries a frame or an audio packet past the mark; the extra is dropped below.
+        if dur>MAX_SECONDS+0.5:raise ValueError(f'Use a clip of {MAX_SECONDS} seconds or less: pick a part of the video.')
+        dur=min(dur,MAX_SECONDS)
         it=iter(inp.decode(video=0));cur=next(it);start=float(cur.time or 0);nxt=next(it,None)
         scale=min(1,960/max(cur.width,cur.height));w=max(2,int(cur.width*scale)//2*2);h=max(2,int(cur.height*scale)//2*2)
         out,stream=writer(dst,w,h);count=round(dur*24)
