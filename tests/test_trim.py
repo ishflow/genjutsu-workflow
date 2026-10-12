@@ -41,6 +41,15 @@ class ThirtySecondLimitTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    with self.assertRaisesRegex(ValueError,'30 seconds or less'):pipeline.normalize(self.clip(d,31),Path(d)/'original.mp4')
 
+@unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('rubberband'),'ffmpeg or rubberband not installed')
+class PreparedInputTests(unittest.TestCase):
+ def test_embedded_vocals_do_not_outlast_the_picture(self):
+  import audio_workflow
+  with tempfile.TemporaryDirectory() as d:
+   subprocess.run(['ffmpeg','-y','-f','lavfi','-i','testsrc=duration=2:size=64x64:rate=24','-c:v','libx264','-pix_fmt','yuv420p',str(Path(d)/'composite-silent.mp4')],check=True,capture_output=True)
+   subprocess.run(['ffmpeg','-y','-f','lavfi','-i','sine=duration=2.4','-ac','2','-ar','44100',str(Path(d)/'vocals.wav')],check=True,capture_output=True)
+   self.assertLessEqual(trim.duration(audio_workflow.prepare_seedance_video(d)),2.06)
+
 class FaceGapTests(unittest.TestCase):
  def test_missing_face_names_the_first_gap(self):
   import json,face_mesh

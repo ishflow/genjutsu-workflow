@@ -107,6 +107,9 @@ def prepare_seedance_video(folder, semitones=3):
     write_audio(pitched,samples)
     target=folder/'seedance-input.mp4'
     with av.open(str(folder/'composite-silent.mp4')) as video,av.open(str(target),'w') as out:
+        # The vocals must not outlast the picture: a provider's length limit counts the longer of the two.
+        picture=video.streams.video[0]
+        if picture.duration:n=min(n,round(float(picture.duration*picture.time_base)*RATE));samples=samples[:,:n]
         vs=out.add_stream_from_template(video.streams.video[0]);audio=out.add_stream('aac',rate=RATE);audio.layout='stereo';audio.bit_rate=192000
         for packet in video.demux(video=0):
             if packet.dts is not None:packet.stream=vs;out.mux(packet)
